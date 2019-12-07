@@ -7,6 +7,9 @@ package consts
 
 const (
 	BufLineSize = 1024
+
+	DefaultMaxConn     = 10000
+	DefaultMaxPackSize = 4096
 )
 
 /* vim: set tabstop=4 set shiftwidth=4 */

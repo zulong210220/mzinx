@@ -48,7 +48,7 @@ func (pr *PingRouter) PostHandle(request ziface.IRequest) {
 }
 
 func main() {
-	s := znet.NewServer("[zinx v02]")
+	s := znet.NewServer("[zinx v03]")
 	s.AddRouter(&PingRouter{})
 	s.Serve()
 }

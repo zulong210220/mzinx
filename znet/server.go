@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"mzinx/utils"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,7 +23,7 @@ type Server struct {
 	Name      string
 	IPVersion string
 	IP        string
-	Port      int
+	Port      int32
 	connCount uint32
 
 	Router ziface.IRouter
@@ -30,7 +32,7 @@ type Server struct {
 func (s *Server) Start() {
 	fun := "Server.Start"
 	endpoint := fmt.Sprintf("%s:%d", s.IP, s.Port)
-	logrus.Infof("[%s] Server Listener IP:%s Port:%d starting...", fun, s.IP, s.Port)
+	logrus.Infof("[%s] Server:%s Listener IP:%s Port:%d version:%s starting...", fun, s.Name, s.IP, s.Port, utils.GlobalObject.Version)
 
 	addr, err := net.ResolveTCPAddr(s.IPVersion, endpoint)
 	if err != nil {
@@ -101,10 +103,10 @@ func (s *Server) AddRouter(router ziface.IRouter) {
 
 func NewServer(name string) ziface.IServer {
 	s := &Server{
-		Name:      name,
+		Name:      utils.GlobalObject.Name,
 		IPVersion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      8999,
+		IP:        utils.GlobalObject.Host,
+		Port:      utils.GlobalObject.TcpPort,
 		Router:    nil,
 	}
 

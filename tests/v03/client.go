@@ -24,7 +24,7 @@ func main() {
 
 	bufSize := 1024
 	for {
-		buf := []byte("Hello zinx v02---")
+		buf := []byte("Hello zinx v03---")
 		cnt, err := conn.Write(buf)
 		if err != nil {
 			logrus.Errorf("conn write buf:%s failed err:%v", buf, err)

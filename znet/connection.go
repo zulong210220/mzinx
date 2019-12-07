@@ -10,8 +10,9 @@ import (
 	"mzinx/ziface"
 	"net"
 
-	"github.com/sirupsen/logrus"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Connection struct {
