@@ -12,6 +12,8 @@ type IServer interface {
 	Stop()
 	// 运行
 	Serve()
+
+	AddRouter(router IRouter)
 }
 
 /* vim: set tabstop=4 set shiftwidth=4 */

@@ -7,9 +7,12 @@ package znet
 
 import (
 	"fmt"
-	"io"
 	"mzinx/ziface"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -19,11 +22,10 @@ type Server struct {
 	IPVersion string
 	IP        string
 	Port      int
-}
+	connCount uint32
 
-const (
-	LineBufferSize = 1024
-)
+	Router ziface.IRouter
+}
 
 func (s *Server) Start() {
 	fun := "Server.Start"
@@ -51,26 +53,19 @@ func (s *Server) Start() {
 			continue
 		}
 
-		go func() {
-			for {
-				buf := make([]byte, LineBufferSize)
-				cnt, err := conn.Read(buf)
-				if err != nil {
-					logrus.Errorf("[%s] recv buffer %s err:%v", fun, endpoint, err)
-					if err == io.EOF {
-						break
-					}
-					continue
-				}
-
-				// 回显
-				if _, err := conn.Write(buf[:cnt]); err != nil {
-					logrus.Errorf("[%s] write back buffer %s %s err:%v", fun, endpoint, buf, err)
-					continue
-				}
-			}
-		}()
+		dealConn := NewConnection(conn, s.connCount, s.Router)
+		s.connCount++
+		go dealConn.Start()
 	}
+}
+
+func Callback2Client(conn *net.TCPConn, data []byte, cnt int) error {
+	fun := "Callback2Client"
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		logrus.Errorf("[%s] Write data:%s failed err:%v", fun, data, err)
+		return err
+	}
+	return nil
 }
 
 func (s *Server) Stop() {
@@ -82,7 +77,26 @@ func (s *Server) Serve() {
 	// 其它初始化
 
 	// 阻塞
-	select {}
+	signalProc()
+}
+
+func signalProc() {
+	c := make(chan os.Signal, 1)
+
+	signal.Notify(c, syscall.SIGINT, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGUSR1)
+
+	sig := <-c
+
+	logrus.Warnf("Signal received: %v", sig)
+
+	time.Sleep(100 * time.Millisecond)
+
+}
+
+func (s *Server) AddRouter(router ziface.IRouter) {
+	fun := "Server.AddRouter"
+	logrus.Infof("[%s] router:%v", fun, router)
+	s.Router = router
 }
 
 func NewServer(name string) ziface.IServer {
@@ -91,6 +105,7 @@ func NewServer(name string) ziface.IServer {
 		IPVersion: "tcp4",
 		IP:        "0.0.0.0",
 		Port:      8999,
+		Router:    nil,
 	}
 
 	return s
