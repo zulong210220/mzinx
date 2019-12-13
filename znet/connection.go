@@ -5,12 +5,12 @@
 package znet
 
 import (
+	"errors"
 	"io"
-	"mzinx/consts"
 	"mzinx/ziface"
 	"net"
 
-	"strings"
+	"encoding/hex"
 
 	"github.com/sirupsen/logrus"
 )
@@ -44,27 +44,33 @@ func (c *Connection) StartReader() {
 	defer c.Stop()
 
 	for {
-		buf := make([]byte, consts.BufLineSize)
-		cnt, err := c.Conn.Read(buf)
-		if err != nil {
-			logrus.Errorf("[%s] read buffer cnt:%d failed err:%v", fun, cnt, err)
-
-			if err == io.EOF || strings.Contains(err.Error(), "tcp") {
-				break
-			}
-			continue
+		dp := NewDataPack()
+		headData := make([]byte, dp.GetHeadLen())
+		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
+			logrus.Errorf("[%s] read msg head err:%v", fun, err)
+			return
 		}
 
-		/*
-			if err := c.handleApi(c.Conn, buf, cnt); err != nil {
-				logrus.Errorf("[%s] connID:%d handleApi failed err:%v", fun, c.ConnID, err)
-				break
+		msg, err := dp.Unpack(headData)
+		if err != nil {
+			logrus.Errorf("[%s] Unpack headData:%s err:%v", fun, headData, err)
+			return
+		}
+
+		logrus.Infof("[%s] ok msg id:%d len:%d", fun, msg.GetMsgId(), msg.GetDataLen())
+		data := []byte{}
+		if msg.GetDataLen() > 0 {
+			data = make([]byte, msg.GetDataLen())
+			if _, err := io.ReadFull(c.GetTCPConnection(), data); err != nil {
+				logrus.Errorf("[%s] ReadFull data err:%v", fun, err)
+				return
 			}
-		*/
+		}
+		msg.SetData(data)
 
 		req := &Request{
 			conn: c,
-			data: buf,
+			msg:  msg,
 		}
 		go func(req ziface.IRequest) {
 			logrus.Infof("[%s] go func....", fun)
@@ -107,7 +113,34 @@ func (c *Connection) RemoteAddr() string {
 	return c.Conn.RemoteAddr().String()
 }
 
-func (c *Connection) Send(data []byte) error {
+func NewMsgPack(id uint32, data []byte) *Message {
+	return &Message{
+		Id:      id,
+		DataLen: uint32(len(data)),
+		Data:    data,
+	}
+}
+
+func (c *Connection) Send(msgId uint32, data []byte) error {
+	fun := "Connection.Send"
+	if c.isClosed {
+		return errors.New("connection is closed")
+	}
+
+	dp := NewDataPack()
+	binaryMsg, err := dp.Pack(NewMsgPack(msgId, data))
+	if err != nil {
+		logrus.Errorf("[%s] Pack error msgId:%d msg:%s", fun, msgId, data)
+		return err
+	}
+
+	logrus.Infof("[%s] binary msg:%s :%d Id:%d data:%s", fun, hex.EncodeToString(binaryMsg), len(binaryMsg), msgId, data)
+
+	if _, err := c.Conn.Write(binaryMsg); err != nil {
+		logrus.Errorf("[%s] Write error msgId:%d msg:%s", fun, msgId, data)
+		return err
+	}
+
 	return nil
 }
 

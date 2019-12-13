@@ -12,7 +12,7 @@ type IConnection interface {
 	GetTCPConnection() *net.TCPConn
 	GetConnID() uint32
 	RemoteAddr() string
-	Send(data []byte) error
+	Send(id uint32, data []byte) error
 }
 
 type HandleFunc func(*net.TCPConn, []byte, int) error
