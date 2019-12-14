@@ -7,7 +7,7 @@ package znet
 import (
 	"errors"
 	"io"
-	"mzinx/utils"
+	"mzinx/config"
 	"mzinx/ziface"
 	"net"
 	"sync"
@@ -87,7 +87,7 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 
-		if utils.GlobalObject.IsWorker {
+		if config.GetConfig().IsWorker {
 			c.handler.SendMsg2TaskQueue(req)
 		} else {
 			go c.handler.DoMsgHandler(req)

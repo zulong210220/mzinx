@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"mzinx/config"
 	"mzinx/consts"
-	"mzinx/utils"
 	"mzinx/ziface"
 
 	"github.com/sirupsen/logrus"
@@ -55,9 +55,9 @@ func (dp *DataPack) Unpack(data []byte) (ziface.IMessage, error) {
 		return nil, err
 	}
 
-	if utils.GlobalObject.MaxPackageSize > 0 &&
-		msg.DataLen > utils.GlobalObject.MaxPackageSize {
-		logrus.Errorf("[%s] binary Read Len %d > %d", fun, msg.DataLen, utils.GlobalObject.MaxPackageSize)
+	if config.GetConfig().MaxPackageSize > 0 &&
+		msg.DataLen > config.GetConfig().MaxPackageSize {
+		logrus.Errorf("[%s] binary Read Len %d > %d", fun, msg.DataLen, config.GetConfig().MaxPackageSize)
 		return nil, errors.New("over size")
 	}
 

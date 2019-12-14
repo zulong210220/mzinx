@@ -1,7 +1,7 @@
 package znet
 
 import (
-	"mzinx/utils"
+	"mzinx/config"
 	"mzinx/ziface"
 	"strconv"
 	"sync"
@@ -22,13 +22,13 @@ type MsgHandler struct {
 func NewMsgHandler() *MsgHandler {
 	mh := &MsgHandler{
 		Apis:           make(map[uint32]ziface.IRouter),
-		WorkerPoolSize: utils.GlobalObject.WorkerPoolSize,
-		TaskQueue:      make([]chan ziface.IRequest, utils.GlobalObject.WorkerPoolSize),
+		WorkerPoolSize: config.GetConfig().WorkerPoolSize,
+		TaskQueue:      make([]chan ziface.IRequest, config.GetConfig().WorkerPoolSize),
 		wg:             &sync.WaitGroup{},
 		exitChan:       make(chan bool),
 	}
 
-	if utils.GlobalObject.IsWorker {
+	if config.GetConfig().IsWorker {
 		mh.StartWorkerPool()
 	}
 
@@ -93,7 +93,7 @@ END:
 
 func (mh *MsgHandler) StartWorkerPool() {
 	for i := 0; i < int(mh.WorkerPoolSize); i++ {
-		mh.TaskQueue[i] = make(chan ziface.IRequest, utils.GlobalObject.TaskQueueSize)
+		mh.TaskQueue[i] = make(chan ziface.IRequest, config.GetConfig().TaskQueueSize)
 		go mh.Work(i, mh.TaskQueue[i])
 	}
 }

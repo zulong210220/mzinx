@@ -1,4 +1,4 @@
-package utils
+package config
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"mzinx/ziface"
 )
 
-type GlobalObj struct {
+type Config struct {
 	TcpServer ziface.IServer
 	Host      string
 	TcpPort   int32
@@ -16,6 +16,7 @@ type GlobalObj struct {
 	Version        string
 	MaxConn        int
 	MaxPackageSize uint32
+	MsgChanSize    int
 
 	WorkerPoolSize uint32
 	TaskQueueSize  int
@@ -23,10 +24,10 @@ type GlobalObj struct {
 }
 
 var (
-	GlobalObject *GlobalObj
+	config *Config
 )
 
-func (g *GlobalObj) Reload() {
+func Reload() {
 	cfn := "conf/mzinx.json"
 	data, err := ioutil.ReadFile(cfn)
 	if err != nil {
@@ -34,26 +35,31 @@ func (g *GlobalObj) Reload() {
 	}
 
 	// TODO 精细化
-	err = json.Unmarshal(data, &GlobalObject)
+	err = json.Unmarshal(data, &config)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func init() {
-	GlobalObject = &GlobalObj{
+	config = &Config{
 		Host:    "0.0.0.0",
-		TcpPort: 8999,
-		Name:    "MZinxServerApp",
+		TcpPort: consts.DefaultPort,
+		Name:    consts.DefaultServerName,
 
-		Version:        "v04",
+		Version:        consts.DefaultVersion,
 		MaxConn:        consts.DefaultMaxConn,
 		MaxPackageSize: consts.DefaultMaxPackSize,
+		MsgChanSize:    consts.DefaultMsgChanSize,
 
-		WorkerPoolSize: 10,
-		TaskQueueSize:  1024,
+		WorkerPoolSize: consts.DefaultWorkerPoolSize,
+		TaskQueueSize:  consts.DefaultTaskQueueSize,
 		IsWorker:       true,
 	}
 
-	GlobalObject.Reload()
+	Reload()
+}
+
+func GetConfig() *Config {
+	return config
 }
