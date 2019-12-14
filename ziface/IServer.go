@@ -13,7 +13,7 @@ type IServer interface {
 	// 运行
 	Serve()
 
-	AddRouter(router IRouter)
+	AddRouter(msgId uint32, router IRouter)
 }
 
 /* vim: set tabstop=4 set shiftwidth=4 */

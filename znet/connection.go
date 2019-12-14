@@ -21,14 +21,14 @@ type Connection struct {
 	isClosed bool
 	//handleApi ziface.HandleFunc
 	ExitChan chan bool
-	Router   ziface.IRouter
+	handler  ziface.IMsgHandler
 }
 
-func NewConnection(conn *net.TCPConn, connId uint32, router ziface.IRouter) *Connection {
+func NewConnection(conn *net.TCPConn, connId uint32, handler ziface.IMsgHandler) *Connection {
 	c := &Connection{
 		Conn:     conn,
 		ConnID:   connId,
-		Router:   router,
+		handler:  handler,
 		isClosed: false,
 		ExitChan: make(chan bool, 1),
 	}
@@ -72,12 +72,8 @@ func (c *Connection) StartReader() {
 			conn: c,
 			msg:  msg,
 		}
-		go func(req ziface.IRequest) {
-			logrus.Infof("[%s] go func....", fun)
-			c.Router.PreHandle(req)
-			c.Router.Handle(req)
-			c.Router.PostHandle(req)
-		}(req)
+
+		go c.handler.DoMsgHandler(req)
 	}
 }
 

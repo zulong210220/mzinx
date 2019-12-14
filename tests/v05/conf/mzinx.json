@@ -1,0 +1,8 @@
+{
+    "host":"0.0.0.0",
+    "tcpPort" : 8999,
+    "name" : "MzinxServer",
+    "version" : "v04",
+    "maxConn" : 10000,
+    "maxPackageSize" : 4096
+}

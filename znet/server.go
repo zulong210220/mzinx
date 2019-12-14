@@ -26,7 +26,7 @@ type Server struct {
 	Port      int32
 	connCount uint32
 
-	Router ziface.IRouter
+	handler ziface.IMsgHandler
 }
 
 func (s *Server) Start() {
@@ -55,7 +55,7 @@ func (s *Server) Start() {
 			continue
 		}
 
-		dealConn := NewConnection(conn, s.connCount, s.Router)
+		dealConn := NewConnection(conn, s.connCount, s.handler)
 		s.connCount++
 		go dealConn.Start()
 	}
@@ -95,10 +95,10 @@ func signalProc() {
 
 }
 
-func (s *Server) AddRouter(router ziface.IRouter) {
+func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
 	fun := "Server.AddRouter"
 	logrus.Infof("[%s] router:%v", fun, router)
-	s.Router = router
+	s.handler.AddRouter(msgId, router)
 }
 
 func NewServer(name string) ziface.IServer {
@@ -107,7 +107,7 @@ func NewServer(name string) ziface.IServer {
 		IPVersion: "tcp4",
 		IP:        utils.GlobalObject.Host,
 		Port:      utils.GlobalObject.TcpPort,
-		Router:    nil,
+		handler:   NewMsgHandler(),
 	}
 
 	return s
