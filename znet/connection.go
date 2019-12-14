@@ -21,6 +21,7 @@ type Connection struct {
 	isClosed bool
 	//handleApi ziface.HandleFunc
 	ExitChan chan bool
+	msgChan  chan []byte
 	handler  ziface.IMsgHandler
 }
 
@@ -31,6 +32,7 @@ func NewConnection(conn *net.TCPConn, connId uint32, handler ziface.IMsgHandler)
 		handler:  handler,
 		isClosed: false,
 		ExitChan: make(chan bool, 1),
+		msgChan:  make(chan []byte),
 	}
 
 	return c
@@ -81,6 +83,7 @@ func (c *Connection) Start() {
 	fun := "Connection.Start"
 	logrus.Infof("[%s] Conn Start.. ConnID:%d", fun, c.ConnID)
 	go c.StartReader()
+	go c.StartWriter()
 }
 
 func (c *Connection) Stop() {
@@ -94,6 +97,7 @@ func (c *Connection) Stop() {
 	c.isClosed = true
 
 	c.Conn.Close()
+	close(c.msgChan)
 	close(c.ExitChan)
 }
 
@@ -132,12 +136,27 @@ func (c *Connection) Send(msgId uint32, data []byte) error {
 
 	logrus.Infof("[%s] binary msg:%s :%d Id:%d data:%s", fun, hex.EncodeToString(binaryMsg), len(binaryMsg), msgId, data)
 
-	if _, err := c.Conn.Write(binaryMsg); err != nil {
-		logrus.Errorf("[%s] Write error msgId:%d msg:%s", fun, msgId, data)
-		return err
-	}
+	c.msgChan <- binaryMsg
 
 	return nil
+}
+
+func (c *Connection) StartWriter() {
+	fun := "Connection.StartWriter"
+	logrus.Infof("[%s] starting...", fun)
+	defer logrus.Infof("[%s] client:%s exit", fun, c.RemoteAddr())
+
+	for {
+		select {
+		case data := <-c.msgChan:
+			if _, err := c.Conn.Write(data); err != nil {
+				logrus.Errorf("[%s] Write data:%s err:%s", fun, data, err)
+				return
+			}
+		case <-c.ExitChan:
+			return
+		}
+	}
 }
 
 /* vim: set tabstop=4 set shiftwidth=4 */
