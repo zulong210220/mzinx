@@ -7,8 +7,10 @@ package znet
 import (
 	"errors"
 	"io"
+	"mzinx/utils"
 	"mzinx/ziface"
 	"net"
+	"sync"
 
 	"encoding/hex"
 
@@ -20,21 +22,28 @@ type Connection struct {
 	ConnID   uint32
 	isClosed bool
 	//handleApi ziface.HandleFunc
-	ExitChan chan bool
-	msgChan  chan []byte
-	handler  ziface.IMsgHandler
+	ExitChan     chan bool
+	msgChan      chan []byte
+	handler      ziface.IMsgHandler
+	server       ziface.IServer
+	property     map[string]interface{}
+	propertyLock sync.RWMutex
 }
 
-func NewConnection(conn *net.TCPConn, connId uint32, handler ziface.IMsgHandler) *Connection {
+func NewConnection(server ziface.IServer, conn *net.TCPConn, connId uint32, handler ziface.IMsgHandler) *Connection {
 	c := &Connection{
-		Conn:     conn,
-		ConnID:   connId,
-		handler:  handler,
-		isClosed: false,
-		ExitChan: make(chan bool, 1),
-		msgChan:  make(chan []byte),
+		Conn:         conn,
+		ConnID:       connId,
+		handler:      handler,
+		isClosed:     false,
+		ExitChan:     make(chan bool, 1),
+		msgChan:      make(chan []byte),
+		server:       server,
+		property:     make(map[string]interface{}),
+		propertyLock: sync.RWMutex{},
 	}
 
+	c.server.GetConnManager().Add(c)
 	return c
 }
 
@@ -46,6 +55,9 @@ func (c *Connection) StartReader() {
 	defer c.Stop()
 
 	for {
+		if c.isClosed {
+			return
+		}
 		dp := NewDataPack()
 		headData := make([]byte, dp.GetHeadLen())
 		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
@@ -75,28 +87,37 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 
-		go c.handler.DoMsgHandler(req)
+		if utils.GlobalObject.IsWorker {
+			c.handler.SendMsg2TaskQueue(req)
+		} else {
+			go c.handler.DoMsgHandler(req)
+		}
 	}
 }
 
 func (c *Connection) Start() {
 	fun := "Connection.Start"
 	logrus.Infof("[%s] Conn Start.. ConnID:%d", fun, c.ConnID)
+	go c.server.CallOnConnStart(c)
 	go c.StartReader()
 	go c.StartWriter()
 }
 
 func (c *Connection) Stop() {
 	fun := "Connection.Stop"
-	logrus.Infof("[%s] Conn Stop.. ConnID:%d", fun, c.ConnID)
+	logrus.Infof("[%s] Conn Stop.. ConnID:%d isClosed:%v", fun, c.ConnID, c.isClosed)
 
 	if c.isClosed == true {
 		return
 	}
-
 	c.isClosed = true
 
+	c.server.CallOnConnStop(c)
+
+	c.ExitChan <- true
+
 	c.Conn.Close()
+	c.server.GetConnManager().Remove(c)
 	close(c.msgChan)
 	close(c.ExitChan)
 }
@@ -146,6 +167,7 @@ func (c *Connection) StartWriter() {
 	logrus.Infof("[%s] starting...", fun)
 	defer logrus.Infof("[%s] client:%s exit", fun, c.RemoteAddr())
 
+	// 一定要有退出机制,否则一直不退出永远吃资源
 	for {
 		select {
 		case data := <-c.msgChan:
@@ -154,9 +176,34 @@ func (c *Connection) StartWriter() {
 				return
 			}
 		case <-c.ExitChan:
+			logrus.Infof("[%s] client:%s exit", fun, c.RemoteAddr())
 			return
 		}
 	}
+}
+
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	c.property[key] = value
+}
+
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	if value, ok := c.property[key]; ok {
+		return value, nil
+	} else {
+		return nil, errors.New("no such property")
+	}
+}
+
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	delete(c.property, key)
 }
 
 /* vim: set tabstop=4 set shiftwidth=4 */

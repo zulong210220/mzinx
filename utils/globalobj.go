@@ -14,8 +14,12 @@ type GlobalObj struct {
 	Name      string
 
 	Version        string
-	MaxConn        int32
+	MaxConn        int
 	MaxPackageSize uint32
+
+	WorkerPoolSize uint32
+	TaskQueueSize  int
+	IsWorker       bool
 }
 
 var (
@@ -45,6 +49,10 @@ func init() {
 		Version:        "v04",
 		MaxConn:        consts.DefaultMaxConn,
 		MaxPackageSize: consts.DefaultMaxPackSize,
+
+		WorkerPoolSize: 10,
+		TaskQueueSize:  1024,
+		IsWorker:       true,
 	}
 
 	GlobalObject.Reload()

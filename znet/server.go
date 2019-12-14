@@ -26,7 +26,11 @@ type Server struct {
 	Port      int32
 	connCount uint32
 
-	handler ziface.IMsgHandler
+	handler     ziface.IMsgHandler
+	connManager ziface.IConnManager
+
+	onConnStart func(conn ziface.IConnection)
+	onConnStop  func(conn ziface.IConnection)
 }
 
 func (s *Server) Start() {
@@ -55,7 +59,12 @@ func (s *Server) Start() {
 			continue
 		}
 
-		dealConn := NewConnection(conn, s.connCount, s.handler)
+		if s.connManager.Len() > utils.GlobalObject.MaxConn {
+			conn.Close()
+			continue
+		}
+
+		dealConn := NewConnection(s, conn, s.connCount, s.handler)
 		s.connCount++
 		go dealConn.Start()
 	}
@@ -71,10 +80,13 @@ func Callback2Client(conn *net.TCPConn, data []byte, cnt int) error {
 }
 
 func (s *Server) Stop() {
+	s.connManager.ClearConn()
+	s.handler.Stop()
 }
 
 func (s *Server) Serve() {
 	go s.Start()
+	defer s.Stop()
 
 	// 其它初始化
 
@@ -92,7 +104,6 @@ func signalProc() {
 	logrus.Warnf("Signal received: %v", sig)
 
 	time.Sleep(100 * time.Millisecond)
-
 }
 
 func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
@@ -103,14 +114,39 @@ func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
 
 func NewServer(name string) ziface.IServer {
 	s := &Server{
-		Name:      utils.GlobalObject.Name,
-		IPVersion: "tcp4",
-		IP:        utils.GlobalObject.Host,
-		Port:      utils.GlobalObject.TcpPort,
-		handler:   NewMsgHandler(),
+		Name:        utils.GlobalObject.Name,
+		IPVersion:   "tcp4",
+		IP:          utils.GlobalObject.Host,
+		Port:        utils.GlobalObject.TcpPort,
+		handler:     NewMsgHandler(),
+		connManager: NewConnManager(),
 	}
 
 	return s
+}
+
+func (s *Server) GetConnManager() ziface.IConnManager {
+	return s.connManager
+}
+
+func (s *Server) SetOnConnStart(hook func(ziface.IConnection)) {
+	s.onConnStart = hook
+}
+
+func (s *Server) SetOnConnStop(hook func(ziface.IConnection)) {
+	s.onConnStop = hook
+}
+
+func (s *Server) CallOnConnStart(conn ziface.IConnection) {
+	if s.onConnStart != nil {
+		s.onConnStart(conn)
+	}
+}
+
+func (s *Server) CallOnConnStop(conn ziface.IConnection) {
+	if s.onConnStop != nil {
+		s.onConnStop(conn)
+	}
 }
 
 /* vim: set tabstop=4 set shiftwidth=4 */

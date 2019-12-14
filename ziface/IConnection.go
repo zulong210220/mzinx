@@ -13,6 +13,10 @@ type IConnection interface {
 	GetConnID() uint32
 	RemoteAddr() string
 	Send(id uint32, data []byte) error
+
+	SetProperty(key string, value interface{})
+	GetProperty(key string) (interface{}, error)
+	RemoveProperty(key string)
 }
 
 type HandleFunc func(*net.TCPConn, []byte, int) error

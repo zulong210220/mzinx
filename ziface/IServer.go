@@ -14,6 +14,12 @@ type IServer interface {
 	Serve()
 
 	AddRouter(msgId uint32, router IRouter)
+	GetConnManager() IConnManager
+
+	SetOnConnStart(func(IConnection))
+	SetOnConnStop(func(IConnection))
+	CallOnConnStart(IConnection)
+	CallOnConnStop(IConnection)
 }
 
 /* vim: set tabstop=4 set shiftwidth=4 */
