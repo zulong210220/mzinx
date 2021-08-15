@@ -95,3 +95,19 @@ func TestDatapack(t *testing.T) {
 	conn.Write(sendData1)
 	select {}
 }
+
+func TestOO(t *testing.T) {
+	dp := NewDataPack()
+	msg1 := &Message{
+		Id:      0,
+		DataLen: 5,
+		Data:    []byte{'H', 'e', 'l', 'l', 'o'},
+	}
+	sendData1, err := dp.Pack(msg1)
+	if err != nil {
+		logrus.Errorf("client pack msg1 err:%v", err)
+		return
+	}
+	logrus.Infof("sendData :%s", sendData1)
+
+}

@@ -44,6 +44,13 @@ func (s *Server) Start() {
 		return
 	}
 
+	go func() {
+		for {
+			logrus.Infof("[%s] Server:%s Listener IP:%s Port:%d version:%s conns:%d...max:%d", fun, s.Name, s.IP, s.Port, config.GetConfig().Version, s.connCount, config.GetConfig().MaxConn)
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
 	ln, err := net.ListenTCP(s.IPVersion, addr)
 	if err != nil {
 		logrus.Errorf("[%s] listen %s endpoint:%s err:%v", fun, s.IPVersion, endpoint, err)
@@ -60,6 +67,7 @@ func (s *Server) Start() {
 		}
 
 		if s.connManager.Len() > config.GetConfig().MaxConn {
+			logrus.Errorf("[%s] Over load %s err:%s", fun, endpoint, err)
 			conn.Close()
 			continue
 		}

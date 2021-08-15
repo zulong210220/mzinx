@@ -8,6 +8,9 @@ import (
 	"io"
 	"mzinx/znet"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -17,7 +20,26 @@ func main() {
 	logrus.Infof("client start...")
 
 	time.Sleep(10 * time.Millisecond)
+	limit := 10000
+	for i := 0; i < limit; i++ {
+		go doClient()
+	}
+	signalProc()
+}
 
+func signalProc() {
+	c := make(chan os.Signal, 1)
+
+	signal.Notify(c, syscall.SIGINT, syscall.SIGALRM, syscall.SIGTERM, syscall.SIGUSR1)
+
+	sig := <-c
+
+	logrus.Warnf("Signal received: %v", sig)
+
+	time.Sleep(100 * time.Millisecond)
+}
+
+func doClient() {
 	conn, err := net.Dial("tcp", "127.0.0.1:9999")
 	if err != nil {
 		logrus.Errorf("client start failed err:%v", err)

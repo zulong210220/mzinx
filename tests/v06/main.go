@@ -22,7 +22,7 @@ func (pr *PingRouter) PreHandle(request ziface.IRequest) {
 
 func (pr *PingRouter) Handle(request ziface.IRequest) {
 	fun := "PingRouter.Handle"
-	logrus.Infof("[%s] start.....msgId:%d msg:%s\n", fun, request.GetMsgId(), request.GetData())
+	logrus.Infof("[%s] start.....msgId:%d msg:%s %d\n", fun, request.GetMsgId(), request.GetData(), request.GetConnection().GetConnID())
 
 	data := []byte("ping ping....")
 	err := request.GetConnection().Send(1, data)
@@ -47,7 +47,7 @@ func (pr *HelloRouter) PreHandle(request ziface.IRequest) {
 
 func (pr *HelloRouter) Handle(request ziface.IRequest) {
 	fun := "HelloRouter.Handle"
-	logrus.Infof("[%s] start.....msgId:%d msg:%s\n", fun, request.GetMsgId(), request.GetData())
+	logrus.Infof("[%s] start.....msgId:%d msg:%s %d\n", fun, request.GetMsgId(), request.GetData(), request.GetConnection().GetConnID())
 
 	data := []byte("hello hello....")
 	err := request.GetConnection().Send(1, data)
